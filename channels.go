@@ -3,18 +3,24 @@ package main
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 )
-
-func countWords(filename string, content string) int {
-	time.Sleep(100 * time.Millisecond) // Simulate I/O
-	return len(strings.Fields(content))
-}
 
 // defined a custom type named Job
 type Job struct {
 	Filename string
 	Content  string
+}
+
+func worker(jobs chan Job, results chan<- int, wg *sync.WaitGroup) {
+	defer wg.Done()
+	for job := range jobs {
+		count := len(strings.Fields(job.Content))
+		time.Sleep(100 * time.Millisecond)
+		results <- count
+
+	}
 }
 
 func main() {
@@ -26,21 +32,18 @@ func main() {
 		files[fmt.Sprintf("file%d.txt", i)] = testContent
 	}
 
-	// jobs channel is responsible for sending Job structs to the worker goroutine
-	// done channel is responsible for signaling the main goroutine that the worker has finished processing all jobs
-	jobs := make(chan Job)
-	done := make(chan bool)
+	numWorkers := 3
+	numJobs := len(files)
 
-	total := 0
+	jobs := make(chan Job, numJobs)
+	results := make(chan int, numJobs)
 
+	var wg sync.WaitGroup
 	// worker goroutine that will perform the work
-	go func() {
-		for job := range jobs {
-			count := countWords(job.Filename, job.Content)
-			total += count
-		}
-		done <- true
-	}()
+	for i := 0; i < numWorkers; i++ {
+		wg.Add(1)
+		go worker(jobs, results, &wg)
+	}
 
 	// main goroutine that will send the jobs to the worker goroutine
 	start := time.Now()
@@ -49,7 +52,15 @@ func main() {
 	}
 	// close the jobs channel to signal to the worker goroutine that there are no more jobs
 	close(jobs)
-	// wait for the worker goroutine to finish processing all jobs by blocking on the done channel
-	<-done
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	total := 0
+	for count := range results { // This will exit when results channel is closed
+		total += count
+	}
 	fmt.Printf("Total words: %d, Time taken: %v\n", total, time.Since(start))
 }
