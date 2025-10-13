@@ -33,10 +33,11 @@ func main() {
 	}
 
 	numWorkers := 3
-	numJobs := len(files)
+	numjobs := len(files)
 
-	jobs := make(chan Job, numJobs)
-	results := make(chan int, numJobs)
+	jobs := make(chan Job, numjobs)
+
+	results := make(chan int, numjobs)
 
 	var wg sync.WaitGroup
 	// worker goroutine that will perform the work
@@ -50,6 +51,7 @@ func main() {
 	for filename, content := range files {
 		jobs <- Job{filename, content}
 	}
+
 	// close the jobs channel to signal to the worker goroutine that there are no more jobs
 	close(jobs)
 
@@ -63,4 +65,5 @@ func main() {
 		total += count
 	}
 	fmt.Printf("Total words: %d, Time taken: %v\n", total, time.Since(start))
+	// fmt.Printf("Time taken: %v\n", time.Since(start))
 }

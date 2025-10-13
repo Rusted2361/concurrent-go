@@ -1,0 +1,21 @@
++--------------+
+|   main()     |
+|--------------|
+| creates jobs |──────▶ jobs channel ───────┐
++--------------+                            │
+                                             ▼
+                                   ┌──────────────────┐
+                                   │ worker 1         │
+                                   │ process + send → │──┐
+                                   └──────────────────┘  │
+                                   ┌──────────────────┐  │
+                                   │ worker 2         │  │
+                                   │ process + send → │──┼──▶ results channel
+                                   └──────────────────┘  │
+                                   ┌──────────────────┐  │
+                                   │ worker 3         │  │
+                                   │ process + send → │──┘
+                                   └──────────────────┘
+                                             ▼
+                                     main collects
+                                   from results chan
