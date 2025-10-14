@@ -7,24 +7,17 @@ import (
 	"time"
 )
 
-// defined a custom type named Job
-type Job struct {
-	Filename string
-	Content  string
+func countWords(filename string, content string) int {
+	time.Sleep(100 * time.Millisecond)
+	return len(strings.Fields(content))
 }
 
-func worker(jobs chan Job, results chan<- int, wg *sync.WaitGroup) {
-	defer wg.Done()
-	for job := range jobs {
-		count := len(strings.Fields(job.Content))
-		time.Sleep(100 * time.Millisecond)
-		results <- count
-
-	}
+type Job struct {
+	filename string
+	content  string
 }
 
 func main() {
-	// Each file has exactly 11 words
 	const testContent = "this is a sample text file that has eleven words here"
 
 	files := make(map[string]string)
@@ -32,38 +25,42 @@ func main() {
 		files[fmt.Sprintf("file%d.txt", i)] = testContent
 	}
 
-	numWorkers := 3
-	numjobs := len(files)
-
-	jobs := make(chan Job, numjobs)
-
-	results := make(chan int, numjobs)
-
+	jobs := make(chan Job)
 	var wg sync.WaitGroup
-	// worker goroutine that will perform the work
-	for i := 0; i < numWorkers; i++ {
+	total := 0
+
+	var mu sync.Mutex
+
+	for i := 1; i <= 3; i++ {
 		wg.Add(1)
-		go worker(jobs, results, &wg)
+		go func() {
+			defer wg.Done()
+			for job := range jobs {
+				count := countWords(job.filename, job.content)
+				mu.Lock()
+				total += count
+				mu.Unlock()
+			}
+
+		}()
 	}
 
-	// main goroutine that will send the jobs to the worker goroutine
 	start := time.Now()
+
 	for filename, content := range files {
 		jobs <- Job{filename, content}
 	}
-
-	// close the jobs channel to signal to the worker goroutine that there are no more jobs
 	close(jobs)
+	wg.Wait()
 
-	go func() {
-		wg.Wait()
-		close(results)
-	}()
+	fmt.Printf("Worker total: %d\n", total)
+	fmt.Printf("Time taken: %v\n", time.Since(start))
+	// wg.Add(1)
+	// go func() {
+	// 	defer wg.Done()
+	// 	fmt.Println("pprof running on :6060")
+	// 	http.ListenAndServe("localhost:6060", nil)
+	// }()
+	// wg.Wait()
 
-	total := 0
-	for count := range results { // This will exit when results channel is closed
-		total += count
-	}
-	fmt.Printf("Total words: %d, Time taken: %v\n", total, time.Since(start))
-	// fmt.Printf("Time taken: %v\n", time.Since(start))
 }
