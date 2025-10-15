@@ -26,20 +26,20 @@ func main() {
 	}
 
 	jobs := make(chan Job)
+	results := make(chan int)
 	var wg sync.WaitGroup
-	total := 0
+	// total := 0
+	// var mu sync.Mutex
 
-	var mu sync.Mutex
-
-	for i := 1; i <= 3; i++ {
+	for i := 1; i <= 20; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			for job := range jobs {
-				count := countWords(job.filename, job.content)
-				mu.Lock()
-				total += count
-				mu.Unlock()
+				results <- countWords(job.filename, job.content)
+				// mu.Lock()
+				// total += count
+				// mu.Unlock()
 			}
 
 		}()
@@ -47,20 +47,25 @@ func main() {
 
 	start := time.Now()
 
-	for filename, content := range files {
-		jobs <- Job{filename, content}
-	}
-	close(jobs)
-	wg.Wait()
+	// Send all jobs
+	go func() {
+		for filename, content := range files {
+			jobs <- Job{filename, content}
+		}
+		close(jobs)
+	}()
 
+	// Close results once all workers are done
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	total := 0
+	for c := range results {
+		total += c
+	}
 	fmt.Printf("Worker total: %d\n", total)
 	fmt.Printf("Time taken: %v\n", time.Since(start))
-	// wg.Add(1)
-	// go func() {
-	// 	defer wg.Done()
-	// 	fmt.Println("pprof running on :6060")
-	// 	http.ListenAndServe("localhost:6060", nil)
-	// }()
-	// wg.Wait()
 
 }
