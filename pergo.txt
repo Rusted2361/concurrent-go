@@ -1,0 +1,7 @@
+goos: darwin
+goarch: arm64
+pkg: concurrent-go
+cpu: Apple M3
+BenchmarkProcessFiles_PerGoroutine-8   	   15469	     73062 ns/op	   48354 B/op	     405 allocs/op
+PASS
+ok  	concurrent-go	2.214s
